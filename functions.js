@@ -1,3 +1,5 @@
+const events = require("./events");
+
 function getDaysUntilEvent(event) {
    const today = new Date();
    const nextEvent = new Date(event);
@@ -15,4 +17,29 @@ function getDaysUntilEvent(event) {
    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-module.exports = { getDaysUntilEvent };
+// Функция для формирования сообщения со списком дней рождения
+function getBirthdaysMessage() {
+   let eventsList = events
+      .filter(item => item.type === "birthday")
+      .map(item => ({
+         ...item,
+         daysUntil: getDaysUntilEvent(item.date)
+      }))
+      .sort((a, b) => a.daysUntil - b.daysUntil);
+
+   let message = "";
+   eventsList.forEach((item) => {
+      if (item.daysUntil === 0) {
+         message += `🎉 ${item.name}: СЕГОДНЯ ДЕНЬ РОЖДЕНИЯ! 🎉\n`;
+      } else if (item.daysUntil === 1) {
+         message += `${item.name}: ${item.daysUntil} день\n`;
+      } else if (item.daysUntil >= 2 && item.daysUntil <= 4) {
+         message += `${item.name}: ${item.daysUntil} дня\n`;
+      } else {
+         message += `${item.name}: ${item.daysUntil} дней\n`;
+      }
+   });
+   return message;
+}
+
+module.exports = { getDaysUntilEvent, getBirthdaysMessage };
