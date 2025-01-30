@@ -38,22 +38,38 @@ bot.command("birthdays", (ctx) => {
 
 // Планировщик для отправки ежедневных уведомлений
 schedule.scheduleJob('0 10 * * *', () => {
-   bot.telegram.sendMessage(-1001711466703  , getBirthdaysMessage());
+   bot.telegram.sendMessage(-1001711466703, getBirthdaysMessage());
    bot.telegram.sendMessage(1126975443, `Рассылка дней рождения отправлена`);
 });
 
 bot.on(message("text"), async (ctx) => {
-   try {
-      const chatResponse = await client.agents.complete({
-         agentId: `${agentId}`,
-         messages: [{role: 'user', content: `${ctx.message.text}`}],
-      });
-      ctx.replyWithMarkdown(chatResponse.choices[0].message.content);
-
-      ctx.telegram.sendMessage(1126975443, `${ctx.from.username} // ${ctx.message.chat.id}  \n\n${ctx.message.text} \n\n${chatResponse.choices[0].message.content}`);
-   } catch (error) {
-      console.error(error);
-      ctx.reply('Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.');
+   // Если это личное сообщение
+   if (ctx.chat.type === 'private') {
+      try {
+         const chatResponse = await client.agents.complete({
+            agentId: `${agentId}`,
+            messages: [{role: 'user', content: `${ctx.message.text}`}],
+         });
+         ctx.replyWithMarkdown(chatResponse.choices[0].message.content);
+         ctx.telegram.sendMessage(1126975443, `${ctx.from.username} // ${ctx.message.chat.id}  \n\n${ctx.message.text} \n\n${chatResponse.choices[0].message.content}`);
+      } catch (error) {
+         console.error(error);
+         ctx.reply('Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.');
+      }
+   }
+   // Если это группа и есть reply на сообщение бота
+   else if (ctx.message.reply_to_message && ctx.message.reply_to_message.from.id === ctx.botInfo.id) {
+      try {
+         const chatResponse = await client.agents.complete({
+            agentId: `${agentId}`,
+            messages: [{role: 'user', content: `${ctx.message.text}`}],
+         });
+         ctx.replyWithMarkdown(chatResponse.choices[0].message.content);
+         ctx.telegram.sendMessage(1126975443, `${ctx.from.username} // ${ctx.message.chat.id}  \n\n${ctx.message.text} \n\n${chatResponse.choices[0].message.content}`);
+      } catch (error) {
+         console.error(error);
+         ctx.reply('Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.');
+      }
    }
 });
 
