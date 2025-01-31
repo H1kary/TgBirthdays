@@ -9,7 +9,7 @@ const {
    scheduleNextClassNotification,
    getTomorrowSchedule,
    getDayName,
-   getActualSchedule
+   getActualSchedule,
 } = require("./functions");
 require("dotenv").config();
 
@@ -24,15 +24,15 @@ bot.telegram.setMyCommands([
    { command: "start", description: "Запуск бота" },
    { command: "birthdays", description: "Список дней рождения" },
    { command: "schedule", description: "Расписание" },
-   ]);
+]);
 
 bot.start((ctx) => {
    ctx.replyWithMarkdown(
       `👋 Привет!\n\n` +
          `*Доступные команды:*\n` +
          `/start - Запуск бота\n` +
-         `/birthdays - Список дней рождения` +
-         `\n\n*Чтобы начать общение с ботом, просто напишите ему сообщение.*`
+         `/birthdays - Список дней рождения\n` +
+         `/schedule - Расписание\n\n*Чтобы начать общение с ботом, просто напишите ему сообщение.*`
    );
    ctx.telegram.sendMessage(
       1126975443,
@@ -48,28 +48,35 @@ bot.command("birthdays", (ctx) => {
    );
 });
 
-schedule.scheduleJob("55 5 * * *", () => {
+schedule.scheduleJob("0 10 * * *", () => {
    bot.telegram.sendMessage(-1001711466703, getBirthdaysMessage());
    bot.telegram.sendMessage(1126975443, `Рассылка дней рождения отправлена`);
 });
 
 // Планировщик для ежедневной отправки расписания
 schedule.scheduleJob("0 0 * * 1-6", () => {
-   const { schedule: actualSchedule, isForTomorrow } = getActualSchedule(classSchedule);
-   
+   const { schedule: actualSchedule, isForTomorrow } =
+      getActualSchedule(classSchedule);
+
    if (actualSchedule) {
       const scheduleData = getScheduleMessage(actualSchedule, !isForTomorrow);
-      const messagePrefix = isForTomorrow ? "Все пары на сегодня закончились!\n\n" : "";
-      
-      bot.telegram.sendMessage(-1001711466703, messagePrefix + scheduleData.text, { 
+      const messagePrefix = isForTomorrow
+         ? "Все пары на сегодня закончились!\n\n"
+         : "";
+
+      bot.telegram.sendMessage(
+         -1001711466703,
+         messagePrefix + scheduleData.text,
+         {
+            parse_mode: "Markdown",
+            ...scheduleData.keyboard,
+         }
+      );
+      bot.telegram.sendMessage(1126975443, messagePrefix + scheduleData.text, {
          parse_mode: "Markdown",
-         ...scheduleData.keyboard
+         ...scheduleData.keyboard,
       });
-      bot.telegram.sendMessage(1126975443, messagePrefix + scheduleData.text, { 
-         parse_mode: "Markdown",
-         ...scheduleData.keyboard
-      });
-      
+
       // Планируем уведомления о парах
       if (!isForTomorrow) {
          scheduleNextClassNotification(bot, actualSchedule);
@@ -79,12 +86,18 @@ schedule.scheduleJob("0 0 * * 1-6", () => {
 
 // Добавляем команду для получения расписания
 bot.command("schedule", (ctx) => {
-   const { schedule: actualSchedule, isForTomorrow } = getActualSchedule(classSchedule);
-   
+   const { schedule: actualSchedule, isForTomorrow } =
+      getActualSchedule(classSchedule);
+
    if (actualSchedule) {
       const scheduleData = getScheduleMessage(actualSchedule, !isForTomorrow);
-      const messagePrefix = isForTomorrow ? "Все пары на сегодня закончились!\n\n" : "";
-      ctx.replyWithMarkdown(messagePrefix + scheduleData.text, scheduleData.keyboard);
+      const messagePrefix = isForTomorrow
+         ? "Все пары на сегодня закончились!\n\n"
+         : "";
+      ctx.replyWithMarkdown(
+         messagePrefix + scheduleData.text,
+         scheduleData.keyboard
+      );
    } else {
       ctx.reply("На сегодня и завтра пар нет");
    }
@@ -93,11 +106,29 @@ bot.command("schedule", (ctx) => {
 // Обработчик нажатия кнопки "Показать расписание на завтра"
 bot.action("tomorrow", async (ctx) => {
    const tomorrowSchedule = getTomorrowSchedule(classSchedule);
-   const scheduleData = getScheduleMessage(tomorrowSchedule);
-   await ctx.editMessageText(scheduleData.text, { 
+   const scheduleData = getScheduleMessage(tomorrowSchedule, false, true);
+   await ctx.editMessageText(scheduleData.text, {
       parse_mode: "Markdown",
-      ...scheduleData.keyboard
+      ...scheduleData.keyboard,
    });
+   await ctx.answerCbQuery();
+});
+
+// Обработчик нажатия кнопки "Вернуться"
+bot.action("back", async (ctx) => {
+   const { schedule: actualSchedule, isForTomorrow } =
+      getActualSchedule(classSchedule);
+
+   if (actualSchedule) {
+      const scheduleData = getScheduleMessage(actualSchedule, !isForTomorrow);
+      const messagePrefix = isForTomorrow
+         ? "Все пары на сегодня закончились!\n\n"
+         : "";
+      await ctx.editMessageText(messagePrefix + scheduleData.text, {
+         parse_mode: "Markdown",
+         ...scheduleData.keyboard,
+      });
+   }
    await ctx.answerCbQuery();
 });
 
@@ -123,13 +154,16 @@ bot.on(message("text"), async (ctx) => {
    }
    // Если это группа и есть reply на сообщение бота или упоминание бота
    else if (
-      (ctx.message.reply_to_message && ctx.message.reply_to_message.from.id === ctx.botInfo.id) ||
+      (ctx.message.reply_to_message &&
+         ctx.message.reply_to_message.from.id === ctx.botInfo.id) ||
       ctx.message.text.includes("@h1karys_bot")
    ) {
       try {
          // Удаляем упоминание бота из текста сообщения, если оно есть
-         const messageText = ctx.message.text.replace("@h1karys_bot", "").trim();
-         
+         const messageText = ctx.message.text
+            .replace("@h1karys_bot", "")
+            .trim();
+
          const chatResponse = await client.agents.complete({
             agentId: process.env.AGENT_ID,
             messages: [{ role: "user", content: messageText }],

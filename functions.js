@@ -99,12 +99,14 @@ function getBirthdaysMessage() {
 }
 
 // Функция для форматирования расписания на день
-function getScheduleMessage(daySchedule, showTomorrowButton = false) {
+function getScheduleMessage(daySchedule, showTomorrowButton = false, showBackButton = false) {
    if (!daySchedule || !daySchedule.pairs || daySchedule.pairs.length === 0) {
       return {
          text: "На этот день пар нет",
          keyboard: showTomorrowButton ? Markup.inlineKeyboard([
             Markup.button.callback("Показать расписание на завтра", "tomorrow")
+         ]) : showBackButton ? Markup.inlineKeyboard([
+            Markup.button.callback("Вернуться", "back")
          ]) : undefined
       };
    }
@@ -132,6 +134,8 @@ function getScheduleMessage(daySchedule, showTomorrowButton = false) {
       text: message,
       keyboard: showTomorrowButton ? Markup.inlineKeyboard([
          Markup.button.callback("Показать расписание на завтра", "tomorrow")
+      ]) : showBackButton ? Markup.inlineKeyboard([
+         Markup.button.callback("Вернуться", "back")
       ]) : undefined
    };
 }
